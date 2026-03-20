@@ -1,42 +1,148 @@
 import yaml
 import logging
+import argparse
+import sys
+import importlib.util
 import numpy as np
+from typing import Optional
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import mlflow
 import tensorflow as tf
 
-from zenml.steps import step, Output
-from zenml.integrations.tensorflow.materializers import KerasMaterializer
-
-from model.cat_classifier import CatClassifier
+from model.hotdog_classifier import HotdogClassifier
 
 logging.basicConfig(level=logging.DEBUG)
 
 
-@step(output_materializers=KerasMaterializer,
-      experiment_tracker="mlflow_tracker")
+def _load_train_arrays(train_dir: str,
+                       image_size: int,
+                       batch_size: int) -> tuple[np.ndarray, np.ndarray]:
+    """Loads training data from a folder structure and returns numpy arrays.
+
+    Expected directory layout:
+        train_dir/
+            hotdog/
+            not_hotdog/
+    """
+    dataset = tf.keras.utils.image_dataset_from_directory(
+        train_dir,
+        labels="inferred",
+        label_mode="binary",
+        color_mode="rgb",
+        image_size=(image_size, image_size),
+        batch_size=batch_size,
+        shuffle=True,
+    )
+    dataset = dataset.map(lambda x, y: (x / 255.0, y))
+
+    X_batches = []
+    y_batches = []
+    for X_batch, y_batch in dataset:
+        X_batches.append(X_batch.numpy())
+        y_batches.append(y_batch.numpy())
+
+    X_train = np.concatenate(X_batches, axis=0)
+    y_train = np.concatenate(y_batches, axis=0)
+    return X_train, y_train
+
+
 def train_model(X_train: np.ndarray,
-                y_train: np.ndarray) -> Output(model=tf.keras.Model):
-    """Trains the cat classifier model, logs the run to MLFLow,
+                y_train: np.ndarray,
+                experiment_name: str = "hotdog-classifier",
+                enable_autolog: bool = True) -> tf.keras.Model:
+    """Trains the hotdog classifier model, logs the run to MLFlow,
     and saves the trained model locally.
 
     Args:
         X_train (np.ndarray): Array of train images
         y_train (np.ndarray): Array of training labels
+        experiment_name (str): MLflow experiment name
 
     Returns:
-        (tf.Keras.model): Trained model
+        (tf.keras.Model): Trained model
     """
     with open('steps/config.yaml', 'r') as file:
         configs = yaml.safe_load(file)
 
-    mlflow.tensorflow.autolog()
-    cat_classifier = CatClassifier(configs)
+    mlflow.set_experiment(experiment_name)
+    tensorboard_available = importlib.util.find_spec("tensorboard") is not None
+    use_tf_autolog = enable_autolog and tensorboard_available
+
+    if use_tf_autolog:
+        mlflow.tensorflow.autolog()
+    else:
+        logging.warning(
+            "MLflow TensorFlow autologging disabled (TensorBoard missing or disabled). "
+            "Using manual MLflow logging."
+        )
+
+    hotdog_classifier = HotdogClassifier(configs)
+
+    started_run: Optional[mlflow.ActiveRun] = None
+    if mlflow.active_run() is None:
+        started_run = mlflow.start_run(run_name="train-hotdog-classifier")
 
     logging.info("Starting training...")
-    model = cat_classifier.train(X_train, y_train)
+    model = hotdog_classifier.train(X_train, y_train)
 
     logging.info("Saving model...")
-    cat_classifier.save(model)
+    hotdog_classifier.save(model)
+
+    if not use_tf_autolog:
+        mlflow.log_params(configs)
+        mlflow.tensorflow.log_model(model=model, artifact_path="model")
+
     logging.info("Done.")
+
+    if started_run is not None:
+        mlflow.end_run()
+
     return model
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Train and save the hotdog model.")
+    parser.add_argument(
+        "--train-dir",
+        type=str,
+        default="tests/data/train",
+        help="Directory containing class folders (hotdog, not_hotdog).",
+    )
+    parser.add_argument(
+        "--experiment-name",
+        type=str,
+        default="hotdog-classifier",
+        help="MLflow experiment name.",
+    )
+    parser.add_argument(
+        "--disable-autolog",
+        action="store_true",
+        help="Disable MLflow TensorFlow autologging.",
+    )
+    args = parser.parse_args()
+
+    with open('steps/config.yaml', 'r') as file:
+        configs = yaml.safe_load(file)
+
+    logging.info("Loading training data from %s...", args.train_dir)
+    X_train, y_train = _load_train_arrays(
+        train_dir=args.train_dir,
+        image_size=configs['image_size'],
+        batch_size=configs['batch_size'],
+    )
+
+    train_model(
+        X_train=X_train,
+        y_train=y_train,
+        experiment_name=args.experiment_name,
+        enable_autolog=not args.disable_autolog,
+    )
+
+
+if __name__ == '__main__':
+    main()

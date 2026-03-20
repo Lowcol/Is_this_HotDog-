@@ -6,10 +6,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class Evaluation:
-    """Evaluates model performance on the test set using sklearn metrics.
-    Heavily inspired by
-    https://github.com/zenml-io/zenfiles/blob/main/customer-satisfaction/model/evaluation.py
-    """
+    """Evaluates model performance on the test set using sklearn metrics."""
     def __init__(self) -> None:
         pass
 

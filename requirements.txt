@@ -3,3 +3,5 @@ tensorflow
 keras-tuner
 PyYAML
 scikit-learn
+mlflow
+tensorboard

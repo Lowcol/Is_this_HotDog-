@@ -1,6 +1,7 @@
 import logging
 import datetime
 import numpy as np
+from pathlib import Path
 
 # TODO random seed
 from tensorflow.keras import Sequential
@@ -87,7 +88,9 @@ class HotdogClassifier:
             model: Trained tf.keras.model
         """
         time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        out_path = f"{self.args['output_path']}/model-{time}.h5"
+        output_dir = Path(self.args['output_path'])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        out_path = str(output_dir / f"model-{time}.h5")
 
         tf.keras.models.save_model(
             model,
