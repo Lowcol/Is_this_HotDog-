@@ -1,0 +1,49 @@
+Architecture Decision Record (ADR)
+=================================
+
+Context
+-------
+After the first model training run, the model artifact was too large to keep in Git.
+We needed a solution to store, version, and retrieve trained models reliably.
+
+Options considered
+------------------
+1) DVC
+2) MLflow
+
+Why DVC is a valid option
+-------------------------
+- Strong data and artifact versioning linked to Git commits
+- Good when dataset versioning is the main requirement
+- Useful for reproducible pipelines with remote artifact storage
+
+Why MLflow is a valid option
+----------------------------
+- Native model experiment tracking (params, metrics, artifacts)
+- Model registry support (stages/versions) for deployment workflows
+- Easy model loading by URI (`runs:/...` or `models:/...`)
+- Better fit with our current TensorFlow training and evaluation flow
+- Better integration with Docker-based deployment (training/serving containers)
+
+Decision
+--------
+We choose MLflow as the primary model artifact and model lifecycle solution.
+
+Main reasons for this choice
+----------------------------
+- We already use MLflow in training, so adoption cost is low
+- It solves the "large model files in Git" problem immediately
+- It provides traceability from run -> metrics -> exact model artifact
+- It is better aligned with the planned Docker setup
+
+Consequences
+------------
+- Model binaries are not stored in Git anymore
+- Git stores code/config only; MLflow stores model artifacts
+- Inference should load models from MLflow URIs, not local fixed paths
+- We can later add a central MLflow server + remote artifact store for production
+
+Implementation note
+-------------------
+Use MLflow as the source of truth for trained models and keep `saved_model/` as optional
+local export only when needed.
