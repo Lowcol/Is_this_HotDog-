@@ -1,0 +1,5 @@
+numpy
+tensorflow
+keras-tuner
+PyYAML
+scikit-learn

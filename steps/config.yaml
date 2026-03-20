@@ -1,0 +1,14 @@
+image_size: 256
+kernel_size: 3
+max_pool: 2
+conv_1_filters: 32
+conv_2_filters: 64
+conv_3_filters: 128
+dropout: 0.2
+dense_1_units: 128
+learning_rate: 0.001
+batch_size: 50
+num_epochs: 10
+random_seed: 23
+val_split: 0.2
+output_path: model
