@@ -15,9 +15,10 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif"}
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Create train/test folders with a fixed 25/25/25/25 source mix:\n"
-            "hotdog, people, pets, furniture. Output is binary:\n"
-            "hotdog (only hotdog files) and not_hotdog (people/pets/furniture)."
+            "Create binary train/test folders with:\n"
+            "- all hotdog images\n"
+            "- 80/20 split (train/test)\n"
+            "- class balance 50% hotdog / 50% not_hotdog."
         )
     )
     parser.add_argument(
@@ -47,6 +48,11 @@ def parse_args() -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Print planned operations without writing files.",
+    )
+    parser.add_argument(
+        "--clean-output",
+        action="store_true",
+        help="Delete existing output train/test folders before writing new files.",
     )
     return parser.parse_args()
 
@@ -131,6 +137,16 @@ def copy_or_move_file(src: Path, dst: Path, move: bool) -> None:
         shutil.copy2(src, dst)
 
 
+def maybe_clean_output(output_dir: Path, dry_run: bool) -> None:
+    for split in ("train", "test"):
+        split_dir = output_dir / split
+        if split_dir.exists():
+            if dry_run:
+                print(f"[DRY RUN] Would remove existing folder: {split_dir}")
+            else:
+                shutil.rmtree(split_dir)
+
+
 def main() -> None:
     args = parse_args()
     input_dir: Path = args.input_dir
@@ -153,9 +169,26 @@ def main() -> None:
             "Check filenames contain: hotdog, people, pets, furniture."
         )
 
-    balanced_per_class = min(counts.values())
-    train_per_class = int(balanced_per_class * 0.8)
-    test_per_class = balanced_per_class - train_per_class
+    hotdog_images = list(images_by_class["hotdog"])
+    not_hotdog_pool = (
+        list(images_by_class["people"])
+        + list(images_by_class["pets"])
+        + list(images_by_class["furniture"])
+    )
+
+    hotdog_count = len(hotdog_images)
+    not_hotdog_available = len(not_hotdog_pool)
+
+    required_not_hotdog = hotdog_count
+
+    if not_hotdog_available < required_not_hotdog:
+        raise RuntimeError(
+            "Not enough non-hotdog images to build a 50/50 dataset.\n"
+            f"Required non-hotdog: {required_not_hotdog}, available: {not_hotdog_available}."
+        )
+
+    train_hotdog = int(hotdog_count * 0.8)
+    test_hotdog = hotdog_count - train_hotdog
 
     print(f"Input dir: {input_dir.resolve()}")
     print(f"Detected image files: {total_image_files}")
@@ -163,40 +196,49 @@ def main() -> None:
     for class_name in SOURCE_CLASSES:
         print(f"  - {class_name}: {counts[class_name]}")
     print()
-    print(f"Using balanced subset: {balanced_per_class} images per source class")
+    print(f"Using all hotdog images: {hotdog_count}")
     print(
-        "Per split composition: "
-        "25% hotdog, 25% people, 25% pets, 25% furniture"
+        f"Sampling non-hotdog images: {required_not_hotdog} "
+        f"(from {not_hotdog_available} available)"
     )
-    print(
-        f"Per source class split: train={train_per_class}, test={test_per_class}"
-    )
+    print("Binary class composition: 50% hotdog, 50% not_hotdog")
+    print(f"Split per class: train={train_hotdog}, test={test_hotdog} (80/20)")
     print(
         "Output mapping: hotdog -> hotdog folder, "
         "people/pets/furniture -> not_hotdog folder"
     )
     print(f"Output root: {output_dir}")
+    print(f"Clean output first: {args.clean_output}")
     print(f"Mode: {'move' if args.move else 'copy'}")
     print(f"Dry run: {args.dry_run}")
     print()
 
-    operations = []
-    for class_name in SOURCE_CLASSES:
-        candidates = list(images_by_class[class_name])
-        rng.shuffle(candidates)
-        selected = candidates[:balanced_per_class]
+    rng.shuffle(hotdog_images)
+    rng.shuffle(not_hotdog_pool)
+    selected_not_hotdog = not_hotdog_pool[:required_not_hotdog]
 
-        train_items = selected[:train_per_class]
-        test_items = selected[train_per_class:]
-        target_class = "hotdog" if class_name == "hotdog" else "not_hotdog"
+    hotdog_train_items = hotdog_images[:train_hotdog]
+    hotdog_test_items = hotdog_images[train_hotdog:]
 
-        for src in train_items:
-            dst = unique_destination(output_dir / "train" / target_class / src.name)
-            operations.append((src, dst))
+    not_hotdog_train_items = selected_not_hotdog[:train_hotdog]
+    not_hotdog_test_items = selected_not_hotdog[train_hotdog:]
 
-        for src in test_items:
-            dst = unique_destination(output_dir / "test" / target_class / src.name)
-            operations.append((src, dst))
+    if args.clean_output:
+        maybe_clean_output(output_dir, dry_run=args.dry_run)
+
+    operations: List[Tuple[Path, Path]] = []
+    for src in hotdog_train_items:
+        dst = unique_destination(output_dir / "train" / "hotdog" / src.name)
+        operations.append((src, dst))
+    for src in hotdog_test_items:
+        dst = unique_destination(output_dir / "test" / "hotdog" / src.name)
+        operations.append((src, dst))
+    for src in not_hotdog_train_items:
+        dst = unique_destination(output_dir / "train" / "not_hotdog" / src.name)
+        operations.append((src, dst))
+    for src in not_hotdog_test_items:
+        dst = unique_destination(output_dir / "test" / "not_hotdog" / src.name)
+        operations.append((src, dst))
 
     if args.dry_run:
         for src, dst in operations:

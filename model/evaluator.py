@@ -14,7 +14,7 @@ class Evaluation:
                   y_true: np.ndarray,
                   y_pred: np.ndarray) -> float:
         try:
-            prec_score = precision_score(y_true, y_pred)
+            prec_score = precision_score(y_true, y_pred, zero_division=0)
             logging.info(f"Precision: {str(prec_score)}.")
             return prec_score
         except Exception as e:
@@ -31,7 +31,7 @@ class Evaluation:
                y_true: np.ndarray,
                y_pred: np.ndarray) -> float:
         try:
-            rec_score = recall_score(y_true, y_pred)
+            rec_score = recall_score(y_true, y_pred, zero_division=0)
             logging.info(f"Recall: {str(rec_score)}.")
             return rec_score
         except Exception as e:
@@ -48,7 +48,7 @@ class Evaluation:
            y_true: np.ndarray,
            y_pred: np.ndarray) -> float:
         try:
-            f1 = f1_score(y_true, y_pred)
+            f1 = f1_score(y_true, y_pred, zero_division=0)
             logging.info(f"F1 score: {str(f1)}.")
             return f1
         except Exception as e:

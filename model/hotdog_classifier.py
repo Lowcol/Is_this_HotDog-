@@ -3,15 +3,12 @@ import datetime
 import numpy as np
 from pathlib import Path
 
-# TODO random seed
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import (
     Dense,
     Dropout,
-    Flatten,
-    Conv2D,
-    MaxPooling2D,
-    BatchNormalization
+    GlobalAveragePooling2D,
+    Rescaling
 )
 
 import tensorflow as tf
@@ -29,54 +26,58 @@ class HotdogClassifier:
               y_train: np.ndarray):
         logging.info("Constructing model...")
 
-        cnn2d = Sequential()
-        cnn2d.add(
-            Conv2D(
-                filters=self.args.get('conv_1_filters', 32),
-                kernel_size=(self.args['kernel_size'], self.args['kernel_size']),
-                activation='relu',
-                input_shape=(self.args['image_size'], self.args['image_size'], 3)))
-        cnn2d.add(MaxPooling2D(
-            pool_size=(self.args['max_pool'], self.args['max_pool'])))
-        cnn2d.add(BatchNormalization())
-        cnn2d.add(Conv2D(
-            filters=self.args.get('conv_2_filters', 64),
-            kernel_size=(self.args['kernel_size'], self.args['kernel_size']),
-            activation='relu'))
-        cnn2d.add(MaxPooling2D(
-            pool_size=(self.args['max_pool'], self.args['max_pool'])))
-        cnn2d.add(BatchNormalization())
-        cnn2d.add(Conv2D(
-            filters=self.args.get('conv_3_filters', 128),
-            kernel_size=(self.args['kernel_size'], self.args['kernel_size']),
-            activation='relu'))
-        cnn2d.add(MaxPooling2D(
-            pool_size=(self.args['max_pool'], self.args['max_pool'])))
-        cnn2d.add(BatchNormalization())
-        cnn2d.add(Dropout(
-            self.args['dropout']))
-        cnn2d.add(Flatten())
-        cnn2d.add(Dense(
-            units=self.args.get('dense_1_units', 128),
-            activation='relu'))
-        cnn2d.add(Dropout(
-            self.args['dropout']))
-        cnn2d.add(Dense(
-            units=1,
-            activation='sigmoid'))
+        tf.keras.utils.set_random_seed(self.args.get('random_seed', 0))
 
-        cnn2d.compile(loss='binary_crossentropy',
+        dropout_rate = self.args.get('dropout', 0.2)
+
+        output_units = int(self.args.get('dense_3_units', 1))
+        if output_units == 1:
+            output_activation = 'sigmoid'
+            loss = 'binary_crossentropy'
+        else:
+            output_activation = 'softmax'
+            loss = 'sparse_categorical_crossentropy'
+
+        base_model = tf.keras.applications.MobileNetV2(
+            input_shape=(self.args['image_size'], self.args['image_size'], 3),
+            include_top=False,
+            weights='imagenet'
+        )
+        base_model.trainable = False
+
+        cnn2d = Sequential([
+            tf.keras.layers.InputLayer(shape=(self.args['image_size'], self.args['image_size'], 3)),
+            tf.keras.layers.RandomFlip("horizontal"),
+            tf.keras.layers.RandomRotation(0.1),
+            Rescaling(scale=1.0 / 127.5, offset=-1.0),
+            base_model,
+            GlobalAveragePooling2D(),
+            Dropout(dropout_rate),
+            Dense(units=self.args.get('dense_1_units', 256), activation='relu'),
+            Dropout(dropout_rate),
+            Dense(units=self.args.get('dense_2_units', 64), activation='relu'),
+            Dropout(dropout_rate),
+            Dense(units=output_units, activation=output_activation)
+        ])
+
+        cnn2d.compile(loss=loss,
                       optimizer=Adam(learning_rate=self.args['learning_rate']),
                       metrics=['accuracy'])
         logging.info("Model compiled.")
 
         logging.info("Fitting model...")
+
+        indices = np.arange(X_train.shape[0])
+        np.random.shuffle(indices)
+        X_train = X_train[indices]
+        y_train = y_train[indices]
+
         cnn2d.fit(
             x=X_train,
             y=y_train,
             epochs=self.args['num_epochs'],
             batch_size=self.args['batch_size'],
-            validation_split=self.args['val_split']
+            validation_split=self.args['val_split'],
         )
         logging.info("Model successfully fit.")
         return cnn2d
@@ -90,11 +91,7 @@ class HotdogClassifier:
         time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         output_dir = Path(self.args['output_path'])
         output_dir.mkdir(parents=True, exist_ok=True)
-        out_path = str(output_dir / f"model-{time}.h5")
+        out_path = str(output_dir / f"model-{time}.keras")
 
-        tf.keras.models.save_model(
-            model,
-            filepath=out_path,
-            save_format='h5'
-        )
+        tf.keras.models.save_model(model, filepath=out_path)
         logging.info(f"Model saved to {out_path}.")

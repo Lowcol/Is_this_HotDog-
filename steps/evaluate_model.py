@@ -43,10 +43,19 @@ def evaluate_model(trained_model: tf.keras.Model,
 
     try:
         logging.info("Predicting on the test set...")
-        y_test = y_test[:, 0]
+        # Support both historical one-hot labels (N, 2) and binary labels (N,).
+        if y_test.ndim > 1:
+            y_test = y_test[:, 0]
+        y_test = y_test.astype(int)
         evaluation = Evaluation()
 
-        prediction = trained_model.predict(X_test)[:, 0]
+        raw_prediction = trained_model.predict(X_test)
+        
+        if raw_prediction.shape[1] == 1:
+            prediction = raw_prediction[:, 0]
+        else:
+            prediction = raw_prediction[:, 1]
+            
         prediction = np.where(prediction > classification_cutoff, 1, 0)
 
         logging.info(f"Calculating metrics with cut-off {classification_cutoff}...")

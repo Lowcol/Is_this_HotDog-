@@ -1,14 +1,16 @@
-image_size: 256
-kernel_size: 3
-max_pool: 2
-conv_1_filters: 32
-conv_2_filters: 64
-conv_3_filters: 128
-dropout: 0.2
-dense_1_units: 128
-learning_rate: 0.001
-batch_size: 50
-num_epochs: 10
-random_seed: 23
-val_split: 0.2
-output_path: models/
+image_dir_train: "tests/data/train" # Training image directory
+image_dir_test: "tests/data/test" # Test image directory
+
+image_size: 224 # Input image resize dimension (pixels)
+dropout: 0.5 # Dropout rate increased to prevent overfitting
+dense_1_units: 256 # Units in first dense layer
+dense_2_units: 64 # Units in second dense layer
+dense_3_units: 2 # Units in output layer (2-class softmax)
+learning_rate: 0.001 # Optimizer learning rate
+batch_size: 64 # Samples per training batch
+num_epochs: 10 # Full training passes over dataset
+random_seed: 0 # Reproducibility seed
+val_split: 0.2 # Fraction of train data used for validation
+output_path: model/saved/ # Directory to save trained model artifacts
+min_precision: 0.85 # Minimum required precision threshold
+min_recall: 0.85 # Minimum required recall threshold

@@ -3,9 +3,9 @@ import logging
 import argparse
 import sys
 import importlib.util
-import numpy as np
 from typing import Optional
 from pathlib import Path
+import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -13,6 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import mlflow
 import tensorflow as tf
+from mlflow.models import infer_signature
 
 from model.hotdog_classifier import HotdogClassifier
 
@@ -38,7 +39,7 @@ def _load_train_arrays(train_dir: str,
         batch_size=batch_size,
         shuffle=True,
     )
-    dataset = dataset.map(lambda x, y: (x / 255.0, y))
+    # The models handle preprocessing directly now
 
     X_batches = []
     y_batches = []
@@ -74,7 +75,7 @@ def train_model(X_train: np.ndarray,
     use_tf_autolog = enable_autolog and tensorboard_available
 
     if use_tf_autolog:
-        mlflow.tensorflow.autolog()
+        mlflow.tensorflow.autolog(log_models=False)
     else:
         logging.warning(
             "MLflow TensorFlow autologging disabled (TensorBoard missing or disabled). "
@@ -93,9 +94,11 @@ def train_model(X_train: np.ndarray,
     logging.info("Saving model...")
     hotdog_classifier.save(model)
 
-    if not use_tf_autolog:
-        mlflow.log_params(configs)
-        mlflow.tensorflow.log_model(model=model, artifact_path="model")
+    mlflow.log_params(configs)
+    input_example = X_train[:1].astype('float32')
+    output_example = model.predict(input_example, verbose=0)
+    signature = infer_signature(input_example, output_example)
+    mlflow.tensorflow.log_model(model=model, name="model", signature=signature)
 
     logging.info("Done.")
 
