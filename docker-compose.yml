@@ -1,0 +1,29 @@
+services:
+  pipeline:
+    build: .
+    container_name: hotdog_pipeline
+    volumes:
+      # Map mlruns directory to persist model artifacts
+      - ./mlruns:/app/mlruns
+      # Map dataset to avoid re-downloading
+      - ./dataset:/app/dataset
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TF_CPP_MIN_LOG_LEVEL=2
+    stdin_open: true
+    tty: true
+
+  api:
+    build: .
+    container_name: hotdog_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./dataset:/app/dataset
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TF_CPP_MIN_LOG_LEVEL=2
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      - pipeline
