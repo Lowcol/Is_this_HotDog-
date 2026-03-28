@@ -25,13 +25,49 @@ Run the full pipeline in a container:
 docker run --rm -v "%cd%\mlruns:/app/mlruns" -v "%cd%\dataset:/app/dataset" hotdog-pipeline
 ```
 
-Pipeline steps:
+### Pipeline Architecture
 
-1. Import data
-2. Train model
-3. Evaluate model
-4. Check deployment thresholds
-5. Log model to MLflow when thresholds are met
+```mermaid
+flowchart TD
+    subgraph Data ["Data Sources"]
+        RawData[(Raw Dataset)]
+        mlruns[(MLflow Tracking\nmlruns/)]
+    end
+
+    subgraph Pipeline ["Training Pipeline (Docker)"]
+        direction TB
+        A[1. Import Data] --> B[2. Train Model]
+        B --> C[3. Evaluate Model]
+        C --> D{4. Check Deployment<br/>Thresholds}
+        D -- Meets criteria --> E[5. Log Model to MLflow]
+        D -- Fails criteria --> F[End Pipeline]
+
+        RawData -. Read data .-> A
+        E -. Save metadata/artifacts .-> mlruns
+    end
+
+    subgraph Serving ["Inference Service (Docker Compose)"]
+        G[FastAPI API]
+    end
+
+    E -. Loads deployment model .-> G
+
+    classDef mlflow fill:#0094ce,color:#fff,stroke:#000
+    classDef fastapi fill:#059669,color:#fff,stroke:#000
+    classDef docker fill:#2496ed,color:#fff,stroke:#000
+
+    class E,mlruns mlflow
+    class G fastapi
+    class Pipeline,Serving docker
+```
+
+Pipeline steps detailed:
+
+1. **Import data**: Format images from `data/raw/` (or `dataset/`).
+2. **Train model**: Fine-tune classification model using TensorFlow/Keras.
+3. **Evaluate model**: Run performance metrics against the test set.
+4. **Check deployment thresholds**: Compare precision/recall against target.
+5. **Log model**: Save model artifacts and run details via MLflow.
 
 ## 3. Run API (Docker Compose)
 

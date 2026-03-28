@@ -3,14 +3,14 @@ import numpy as np
 
 import unittest
 
-from steps import utils
+from src.pipelines import utils
 
 
 class TestUtils(unittest.TestCase):
     """Test util functions."""
     @classmethod
     def setUpClass(cls):
-        with open('tests/config_test.yaml', 'r') as file:
+        with open('config/test_config.yaml', 'r') as file:
             configs = yaml.safe_load(file)
 
         cls.configs = configs

@@ -1,7 +1,12 @@
-# dataset
-dataset/
+# Data
+data/
 
+# Models
+models/
+
+# MLflow Tracking
 mlruns/
+mlflow.db
 
 
 # Byte-compiled / optimized / DLL files

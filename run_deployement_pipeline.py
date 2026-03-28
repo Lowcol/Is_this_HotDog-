@@ -3,17 +3,17 @@ import logging
 
 import mlflow
 from mlflow.models import infer_signature
-from steps.import_data import import_data
-from steps.train_model import train_model
-from steps.evaluate_model import evaluate_model
-from steps.deploy_model import DeploymentTriggerConfig, deployment_trigger
+from src.pipelines.import_data import import_data
+from src.pipelines.train_model import train_model
+from src.pipelines.evaluate_model import evaluate_model
+from src.pipelines.deploy_model import DeploymentTriggerConfig, deployment_trigger
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def run_main():
-    with open('steps/config.yaml', 'r') as file:
+    with open('config/pipeline_config.yaml', 'r') as file:
         configs = yaml.safe_load(file)
 
     logger.info("Starting continuous deployment pipeline...")

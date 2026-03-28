@@ -1,0 +1,14 @@
+image_dir_train: "data/test_data/train"
+image_dir_test: "data/test_data/test"
+
+image_size: 224
+dropout: 0.2
+dense_1_units: 256
+dense_2_units: 64
+dense_3_units: 2
+learning_rate: 0.001
+batch_size: 50
+num_epochs: 10
+random_seed: 23
+val_split: 0.2
+output_path: models/model_test/
