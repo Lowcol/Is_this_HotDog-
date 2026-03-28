@@ -6,8 +6,8 @@ on:
       - main
       - master
     paths-ignore:
-      - 'README.md'
-      - '.gitignore'
+      - "README.md"
+      - ".gitignore"
 
 env:
   REGISTRY: ghcr.io
@@ -23,8 +23,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10' # Adjust this version to match your project
-          cache: 'pip'
+          python-version: "3.10" # Adjust this version to match your project
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -32,6 +32,8 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run tests with pytest
+        env:
+          PYTHONPATH: .
         run: |
           pytest tests/
 
