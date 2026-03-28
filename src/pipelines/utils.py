@@ -9,7 +9,7 @@ from PIL import Image
 
 logging.basicConfig(level=logging.DEBUG)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 try:
     RESAMPLE_LANCZOS = Image.Resampling.LANCZOS

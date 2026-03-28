@@ -1,5 +1,7 @@
 import yaml
 import logging
+import os
+import tensorflow as tf
 
 import mlflow
 from mlflow.models import infer_signature
@@ -23,10 +25,27 @@ def run_main():
     X_train, y_train, X_test, y_test = import_data()
     logger.info(f"Data imported. Training samples: {X_train.shape[0]}, Test samples: {X_test.shape[0]}")
 
-    # Step 2: Train model
-    logger.info("Step 2: Training model...")
-    trained_model = train_model(X_train, y_train)
-    logger.info("Model training completed.")
+    # Step 2: Check for existing model or train a new one
+    logger.info("Step 2: Checking for existing trained model...")
+    models_dir = configs.get('output_path', 'models/')
+    
+    # Check if directory exists and find the latest .keras model
+    latest_model_path = None
+    if os.path.exists(models_dir):
+        model_files = [f for f in os.listdir(models_dir) if f.endswith('.keras')]
+        if model_files:
+            # Sort files by name (which includes timestamp format like model-2026-03-22-15-13-01.keras)
+            latest_model_file = sorted(model_files)[-1]
+            latest_model_path = os.path.join(models_dir, latest_model_file)
+    
+    if latest_model_path:
+        logger.info(f"Existing model found: {latest_model_path}")
+        logger.info("Loading existing model, skipping training phase...")
+        trained_model = tf.keras.models.load_model(latest_model_path)
+    else:
+        logger.info("No existing model found. Proceeding to train a new model...")
+        trained_model = train_model(X_train, y_train)
+        logger.info("Model training completed.")
 
     # Step 3: Evaluate model
     logger.info("Step 3: Evaluating model...")

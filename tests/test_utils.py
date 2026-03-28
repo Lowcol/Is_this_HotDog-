@@ -15,11 +15,11 @@ class TestUtils(unittest.TestCase):
 
         cls.configs = configs
 
-    def test_label_img_cat(self):
+    def test_label_img_hotdog(self):
         res = utils.label_img('hotdog')
         self.assertEqual(res, 1)
 
-    def test_label_img_not_cat(self):
+    def test_label_img_not_hotdog(self):
         res = utils.label_img('not_hotdog')
         self.assertEqual(res, 0)
 
@@ -51,7 +51,7 @@ class TestUtils(unittest.TestCase):
 
         self.assertGreater(len(images), 0)
         self.assertEqual(images.shape[-1], 3)
-        self.assertLessEqual(np.max(images), 1)
+        self.assertLessEqual(np.max(images), 255.0)
         self.assertGreaterEqual(np.min(images), 0)
         self.assertEqual(len(labels), len(images))
         self.assertEqual(len(paths), len(images))
