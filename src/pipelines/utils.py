@@ -50,13 +50,22 @@ def load_data(train: bool,
         image_dir = PROJECT_ROOT / image_dir
     image_dir = str(image_dir.resolve())
 
+    if not os.path.exists(image_dir):
+        raise FileNotFoundError(f"Data directory not found: {image_dir}")
+
     data = []
-    directories = next(os.walk(image_dir))[1]
+    try:
+        directories = next(os.walk(image_dir))[1]
+    except StopIteration:
+        directories = []
     class_to_files = {}
 
     for dirname in directories:
         class_dir = os.path.join(image_dir, dirname)
-        file_names = next(os.walk(class_dir))[2]
+        try:
+            file_names = next(os.walk(class_dir))[2]
+        except StopIteration:
+            file_names = []
         class_to_files[dirname] = [
             image_name for image_name in file_names
             if 'DS_Store' not in image_name and '.csv' not in image_name

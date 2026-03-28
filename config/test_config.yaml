@@ -1,5 +1,5 @@
-image_dir_train: "data/test_data/train"
-image_dir_test: "data/test_data/test"
+image_dir_train: "tests/dummy_data/train"
+image_dir_test: "tests/dummy_data/test"
 
 image_size: 224
 dropout: 0.2
