@@ -106,7 +106,18 @@ API will be available at:
 
 - http://localhost:8000
 
-## 5. Project Notes
+## 5. CI/CD Pipeline (GitHub Actions)
+
+This project features an automated Continuous Integration/Continuous Deployment (CI/CD) pipeline powered by GitHub Actions.
+It triggers automatically upon pushing code to the `main` or `master` branches.
+
+### Pipeline execution steps:
+
+1. **Tests Execution**: Ensures tests and utilities are running smoothly using `pytest` inside an isolated python environment.
+2. **Docker Build**: Pulls system dependencies and verifies the container architecture works flawlessly.
+3. **Publish to GHCR**: Pushes the verified and built `hotdog-pipeline` Docker images into the GitHub Container Registry (`ghcr.io`).
+
+## 6. Project Notes
 
 - Class imbalance can reduce recall/precision for `hotdog` if training data is skewed.
 - More training data and augmentation generally improve generalization.
